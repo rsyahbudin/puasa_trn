@@ -1,25 +1,32 @@
-import { PrismaClient } from "../app/generated/prisma";
+import "dotenv/config";
+import { PrismaClient } from "@prisma/client";
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+// Create adapter with connection string
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
+
+// Create Prisma client with adapter
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("🌱 Seeding database...");
 
   // Create admin
-  const hashedPassword = await bcrypt.hash(
-    process.env.ADMIN_PASSWORD || "admin123",
-    10
-  );
+  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+  const adminUsername = process.env.ADMIN_USERNAME || "admin";
+
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
   await prisma.admin.upsert({
-    where: { username: process.env.ADMIN_USERNAME || "admin" },
-    update: {},
+    where: { username: adminUsername },
+    update: { password: hashedPassword },
     create: {
-      username: process.env.ADMIN_USERNAME || "admin",
+      username: adminUsername,
       password: hashedPassword,
     },
   });
-  console.log("✅ Admin created");
+  console.log(`✅ Admin created (username: ${adminUsername})`);
 
   // Create categories
   const categories = [
@@ -52,155 +59,174 @@ async function main() {
     where: { name: "Dessert" },
   });
 
-  // Create sample menus
-  // Paket Buka Puasa with variants
-  const paket1 = await prisma.menu.create({
-    data: {
-      name: "Paket Ayam Penyet Spesial",
-      price: 45000,
-      description:
-        "Ayam penyet dengan sambal pilihan, nasi, lalapan, es teh/jeruk",
-      image: "/menu/paket-ayam.jpg",
-      categoryId: paketCategory!.id,
-      variants: {
-        create: [
-          {
-            name: "Pilihan Bagian Ayam",
-            options: {
-              create: [{ name: "Paha" }, { name: "Dada" }, { name: "Sayap" }],
+  if (
+    !paketCategory ||
+    !makananCategory ||
+    !minumanCategory ||
+    !dessertCategory
+  ) {
+    throw new Error("Categories not found");
+  }
+
+  // Check if menus already exist
+  const existingMenus = await prisma.menu.count();
+  if (existingMenus > 0) {
+    console.log("✅ Menus already exist, skipping...");
+  } else {
+    // Create sample menus - Paket Buka Puasa with variants
+    await prisma.menu.create({
+      data: {
+        name: "Paket Ayam Penyet Spesial",
+        price: 45000,
+        description:
+          "Ayam penyet dengan sambal pilihan, nasi, lalapan, es teh/jeruk",
+        image: "/menu/paket-ayam.jpg",
+        categoryId: paketCategory.id,
+        variants: {
+          create: [
+            {
+              name: "Pilihan Bagian Ayam",
+              options: {
+                create: [{ name: "Paha" }, { name: "Dada" }, { name: "Sayap" }],
+              },
             },
-          },
-          {
-            name: "Pilihan Sambal",
-            options: {
-              create: [
-                { name: "Sambal Terasi" },
-                { name: "Sambal Ijo" },
-                { name: "Sambal Matah" },
-              ],
+            {
+              name: "Pilihan Sambal",
+              options: {
+                create: [
+                  { name: "Sambal Terasi" },
+                  { name: "Sambal Ijo" },
+                  { name: "Sambal Matah" },
+                ],
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-  });
+    });
 
-  const paket2 = await prisma.menu.create({
-    data: {
-      name: "Paket Ikan Bakar",
-      price: 55000,
-      description:
-        "Ikan bakar segar dengan bumbu rempah, nasi, sambal, lalapan, es teh",
-      image: "/menu/paket-ikan.jpg",
-      categoryId: paketCategory!.id,
-      variants: {
-        create: [
-          {
-            name: "Pilihan Ikan",
-            options: {
-              create: [{ name: "Gurame" }, { name: "Nila" }, { name: "Lele" }],
+    await prisma.menu.create({
+      data: {
+        name: "Paket Ikan Bakar",
+        price: 55000,
+        description:
+          "Ikan bakar segar dengan bumbu rempah, nasi, sambal, lalapan, es teh",
+        image: "/menu/paket-ikan.jpg",
+        categoryId: paketCategory.id,
+        variants: {
+          create: [
+            {
+              name: "Pilihan Ikan",
+              options: {
+                create: [
+                  { name: "Gurame" },
+                  { name: "Nila" },
+                  { name: "Lele" },
+                ],
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-  });
+    });
 
-  // Makanan Utama
-  await prisma.menu.createMany({
-    data: [
-      {
-        name: "Nasi Goreng Spesial",
-        price: 35000,
-        description: "Nasi goreng dengan telur, ayam, sayuran, dan kerupuk",
-        image: "/menu/nasi-goreng.jpg",
-        categoryId: makananCategory!.id,
-      },
-      {
-        name: "Mie Goreng Jawa",
-        price: 30000,
-        description: "Mie goreng bumbu Jawa dengan sayuran dan telur",
-        image: "/menu/mie-goreng.jpg",
-        categoryId: makananCategory!.id,
-      },
-      {
-        name: "Sop Iga Sapi",
-        price: 50000,
-        description: "Sop iga sapi dengan kuah bening dan sayuran segar",
-        image: "/menu/sop-iga.jpg",
-        categoryId: makananCategory!.id,
-      },
-    ],
-  });
+    // Makanan Utama
+    await prisma.menu.createMany({
+      data: [
+        {
+          name: "Nasi Goreng Spesial",
+          price: 35000,
+          description: "Nasi goreng dengan telur, ayam, sayuran, dan kerupuk",
+          image: "/menu/nasi-goreng.jpg",
+          categoryId: makananCategory.id,
+        },
+        {
+          name: "Mie Goreng Jawa",
+          price: 30000,
+          description: "Mie goreng bumbu Jawa dengan sayuran dan telur",
+          image: "/menu/mie-goreng.jpg",
+          categoryId: makananCategory.id,
+        },
+        {
+          name: "Sop Iga Sapi",
+          price: 50000,
+          description: "Sop iga sapi dengan kuah bening dan sayuran segar",
+          image: "/menu/sop-iga.jpg",
+          categoryId: makananCategory.id,
+        },
+      ],
+    });
 
-  // Minuman
-  await prisma.menu.createMany({
-    data: [
-      {
-        name: "Es Teh Manis",
-        price: 8000,
-        description: "Teh manis segar dengan es batu",
-        image: "/menu/es-teh.jpg",
-        categoryId: minumanCategory!.id,
-      },
-      {
-        name: "Es Jeruk",
-        price: 10000,
-        description: "Jeruk peras segar dengan es",
-        image: "/menu/es-jeruk.jpg",
-        categoryId: minumanCategory!.id,
-      },
-      {
-        name: "Es Kelapa Muda",
-        price: 15000,
-        description: "Kelapa muda segar dengan daging kelapa",
-        image: "/menu/es-kelapa.jpg",
-        categoryId: minumanCategory!.id,
-      },
-      {
-        name: "Jus Alpukat",
-        price: 18000,
-        description: "Jus alpukat creamy dengan susu",
-        image: "/menu/jus-alpukat.jpg",
-        categoryId: minumanCategory!.id,
-      },
-    ],
-  });
+    // Minuman
+    await prisma.menu.createMany({
+      data: [
+        {
+          name: "Es Teh Manis",
+          price: 8000,
+          description: "Teh manis segar dengan es batu",
+          image: "/menu/es-teh.jpg",
+          categoryId: minumanCategory.id,
+        },
+        {
+          name: "Es Jeruk",
+          price: 10000,
+          description: "Jeruk peras segar dengan es",
+          image: "/menu/es-jeruk.jpg",
+          categoryId: minumanCategory.id,
+        },
+        {
+          name: "Es Kelapa Muda",
+          price: 15000,
+          description: "Kelapa muda segar dengan daging kelapa",
+          image: "/menu/es-kelapa.jpg",
+          categoryId: minumanCategory.id,
+        },
+        {
+          name: "Jus Alpukat",
+          price: 18000,
+          description: "Jus alpukat creamy dengan susu",
+          image: "/menu/jus-alpukat.jpg",
+          categoryId: minumanCategory.id,
+        },
+      ],
+    });
 
-  // Dessert
-  await prisma.menu.createMany({
-    data: [
-      {
-        name: "Kolak Pisang",
-        price: 12000,
-        description: "Kolak pisang dengan kuah santan dan gula merah",
-        image: "/menu/kolak.jpg",
-        categoryId: dessertCategory!.id,
-      },
-      {
-        name: "Es Campur",
-        price: 15000,
-        description: "Es campur dengan buah-buahan dan sirup",
-        image: "/menu/es-campur.jpg",
-        categoryId: dessertCategory!.id,
-      },
-      {
-        name: "Kurma",
-        price: 10000,
-        description: "Kurma pilihan untuk berbuka",
-        image: "/menu/kurma.jpg",
-        categoryId: dessertCategory!.id,
-      },
-    ],
-  });
+    // Dessert
+    await prisma.menu.createMany({
+      data: [
+        {
+          name: "Kolak Pisang",
+          price: 12000,
+          description: "Kolak pisang dengan kuah santan dan gula merah",
+          image: "/menu/kolak.jpg",
+          categoryId: dessertCategory.id,
+        },
+        {
+          name: "Es Campur",
+          price: 15000,
+          description: "Es campur dengan buah-buahan dan sirup",
+          image: "/menu/es-campur.jpg",
+          categoryId: dessertCategory.id,
+        },
+        {
+          name: "Kurma",
+          price: 10000,
+          description: "Kurma pilihan untuk berbuka",
+          image: "/menu/kurma.jpg",
+          categoryId: dessertCategory.id,
+        },
+      ],
+    });
 
-  console.log("✅ Menus created");
+    console.log("✅ Menus created");
+  }
+
   console.log("🎉 Seeding completed!");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Seeding error:", e);
     process.exit(1);
   })
   .finally(async () => {

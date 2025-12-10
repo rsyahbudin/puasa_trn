@@ -1,11 +1,23 @@
-import { PrismaClient } from "@/app/generated/prisma";
+import { PrismaClient } from "@prisma/client";
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
+  // eslint-disable-next-line no-var
+  var adapter: PrismaMariaDb | undefined;
+}
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+// Create adapter with connection string
+const adapter =
+  globalThis.adapter ?? new PrismaMariaDb(process.env.DATABASE_URL!);
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Create Prisma client with adapter
+export const prisma = globalThis.prisma ?? new PrismaClient({ adapter });
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.prisma = prisma;
+  globalThis.adapter = adapter;
+}
 
 export default prisma;
