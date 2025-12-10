@@ -11,6 +11,26 @@ import {
   generateWhatsAppLink,
   formatDate,
 } from "@/lib/utils";
+import {
+  ArrowLeft,
+  ChevronRight,
+  ShoppingCart,
+  ClipboardList,
+  Upload,
+  CheckCircle,
+  MessageCircle,
+  User,
+  Phone,
+  Instagram,
+  Calendar,
+  Users,
+  MapPin,
+  Plus,
+  Minus,
+  X,
+  UtensilsCrossed,
+  CreditCard,
+} from "lucide-react";
 
 interface Category {
   id: number;
@@ -59,13 +79,21 @@ interface CustomerData {
   seating: string;
 }
 
-const SEATING_OPTIONS = ["Indoor", "Outdoor", "VIP Room"];
+interface SeatingSpot {
+  id: number;
+  name: string;
+  description: string | null;
+  image: string | null;
+  capacity: string;
+  isActive: boolean;
+}
 
 export default function BookingPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [seatingSpots, setSeatingSpots] = useState<SeatingSpot[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [customerData, setCustomerData] = useState<CustomerData>({
@@ -74,7 +102,7 @@ export default function BookingPage() {
     instagram: "",
     bookingDate: "",
     pax: 2,
-    seating: "Indoor",
+    seating: "",
   });
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -100,7 +128,22 @@ export default function BookingPage() {
 
   useEffect(() => {
     fetchMenus();
+    fetchSeating();
   }, []);
+
+  const fetchSeating = async () => {
+    try {
+      const res = await fetch("/api/seating");
+      const data = await res.json();
+      const activeSpots = (data || []).filter((s: SeatingSpot) => s.isActive);
+      setSeatingSpots(activeSpots);
+      if (activeSpots.length > 0 && !customerData.seating) {
+        setCustomerData((prev) => ({ ...prev, seating: activeSpots[0].name }));
+      }
+    } catch (error) {
+      console.error("Error fetching seating:", error);
+    }
+  };
 
   const fetchMenus = async () => {
     try {
@@ -352,7 +395,8 @@ export default function BookingPage() {
       {/* Toast Notification */}
       {toast.visible && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-bounce">
-          <div className="bg-green-500 text-white px-4 py-2 rounded-full shadow-lg font-medium text-sm">
+          <div className="bg-green-500 text-white px-4 py-2 rounded-full shadow-lg font-medium text-sm flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
             {toast.message}
           </div>
         </div>
@@ -365,7 +409,8 @@ export default function BookingPage() {
             href="/"
             className="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm font-medium mb-3 hover:underline"
           >
-            ← Kembali ke Home
+            <ArrowLeft className="w-4 h-4" />
+            Kembali ke Home
           </Link>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white mb-2">
             Booking Buka Puasa
@@ -377,32 +422,37 @@ export default function BookingPage() {
 
         {/* Step Indicator */}
         <div className="flex justify-center items-center gap-2 md:gap-4 mb-8">
-          {[1, 2, 3, 4].map((s) => (
-            <div key={s} className="flex items-center gap-2">
+          {[
+            { num: 1, icon: User, label: "Data Diri" },
+            { num: 2, icon: UtensilsCrossed, label: "Pilih Menu" },
+            { num: 3, icon: CreditCard, label: "Pembayaran" },
+            { num: 4, icon: CheckCircle, label: "Konfirmasi" },
+          ].map((s) => (
+            <div key={s.num} className="flex items-center gap-2">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                  step === s
+                  step === s.num
                     ? "bg-teal-500 text-white shadow-lg shadow-teal-500/30"
-                    : step > s
+                    : step > s.num
                     ? "bg-green-500 text-white"
                     : "bg-slate-200 dark:bg-slate-700 text-slate-400"
                 }`}
               >
-                {step > s ? "✓" : s}
+                {step > s.num ? (
+                  <CheckCircle className="w-5 h-5" />
+                ) : (
+                  <s.icon className="w-5 h-5" />
+                )}
               </div>
               <span className="hidden md:inline text-sm text-slate-600 dark:text-slate-400">
-                {s === 1
-                  ? "Data Diri"
-                  : s === 2
-                  ? "Pilih Menu"
-                  : s === 3
-                  ? "Pembayaran"
-                  : "Konfirmasi"}
+                {s.label}
               </span>
-              {s < 4 && (
+              {s.num < 4 && (
                 <div
                   className={`hidden md:block w-8 h-0.5 ${
-                    step > s ? "bg-teal-500" : "bg-slate-200 dark:bg-slate-700"
+                    step > s.num
+                      ? "bg-teal-500"
+                      : "bg-slate-200 dark:bg-slate-700"
                   }`}
                 />
               )}
@@ -518,11 +568,19 @@ export default function BookingPage() {
                       })
                     }
                   >
-                    {SEATING_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
+                    {seatingSpots.length > 0 ? (
+                      seatingSpots.map((spot) => (
+                        <option key={spot.id} value={spot.name}>
+                          {spot.name} ({spot.capacity})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Indoor">Indoor</option>
+                        <option value="Outdoor">Outdoor</option>
+                        <option value="VIP Room">VIP Room</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>

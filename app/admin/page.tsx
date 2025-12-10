@@ -19,6 +19,7 @@ interface Stats {
   pendingBookings: number;
   confirmedBookings: number;
   totalRevenue: number;
+  
 }
 
 export default function AdminDashboard() {
