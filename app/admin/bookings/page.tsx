@@ -16,6 +16,9 @@ import {
   Clock,
   Trash2,
   X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 interface OrderItem {
@@ -50,6 +53,8 @@ export default function BookingsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [sortField, setSortField] = useState<string>("bookingDate");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     fetchBookings();
@@ -121,6 +126,51 @@ export default function BookingsPage() {
     return true;
   });
 
+  // Sort filtered bookings
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    let comparison = 0;
+    switch (sortField) {
+      case "customerName":
+        comparison = a.customerName.localeCompare(b.customerName);
+        break;
+      case "bookingDate":
+        comparison =
+          new Date(a.bookingDate).getTime() - new Date(b.bookingDate).getTime();
+        break;
+      case "pax":
+        comparison = a.pax - b.pax;
+        break;
+      case "totalAmount":
+        comparison = a.totalAmount - b.totalAmount;
+        break;
+      case "status":
+        comparison = a.status.localeCompare(b.status);
+        break;
+      default:
+        comparison = 0;
+    }
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field)
+      return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />;
+    return sortDirection === "asc" ? (
+      <ArrowUp className="w-3 h-3 ml-1" />
+    ) : (
+      <ArrowDown className="w-3 h-3 ml-1" />
+    );
+  };
+
   // Calculate stats from filtered data
   const filteredStats = {
     total: filteredBookings.length,
@@ -130,32 +180,57 @@ export default function BookingsPage() {
     confirmed: filteredBookings.filter((b) => b.status === "confirmed").length,
   };
 
-  // Export to Excel
+  // Export to Excel with improved formatting
   const exportToExcel = () => {
-    const exportData = filteredBookings.map((b) => ({
-      ID: b.id,
-      Nama: b.customerName,
-      WhatsApp: b.phone,
-      Instagram: b.instagram || "-",
-      "Tanggal Booking": formatDateShort(b.bookingDate),
-      "Jumlah Orang": b.pax,
-      Spot: b.seating,
-      Total: b.totalAmount,
-      DP: b.dpAmount,
-      Status: b.status,
-      "Tanggal Dibuat": formatDateShort(b.createdAt),
-      Pesanan:
+    // Create separate columns for each order item for better readability
+    const exportData = filteredBookings.map((b) => {
+      // Format order items as individual lines
+      const pesananFormatted =
         b.orderItems
           ?.map(
-            (item) =>
-              `${item.menuName} x${item.quantity}${
+            (item, idx) =>
+              `${idx + 1}. ${item.menuName} x${item.quantity}${
                 item.selectedOptions ? ` (${item.selectedOptions})` : ""
-              }`
+              } = Rp ${item.subtotal.toLocaleString("id-ID")}`
           )
-          .join("; ") || "",
-    }));
+          .join("\n") || "";
+
+      return {
+        ID: b.id,
+        Nama: b.customerName,
+        WhatsApp: `'${b.phone}`, // Prefix with ' to keep as text
+        Instagram: b.instagram || "-",
+        "Tanggal Booking": formatDateShort(b.bookingDate),
+        "Jumlah Orang": b.pax,
+        Spot: b.seating,
+        "Total (Rp)": b.totalAmount,
+        "DP (Rp)": b.dpAmount,
+        "Sisa (Rp)": b.totalAmount - b.dpAmount,
+        Status: b.status.toUpperCase(),
+        "Tanggal Dibuat": formatDateShort(b.createdAt),
+        "Pesanan (Detail)": pesananFormatted,
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Set column widths for better readability
+    ws["!cols"] = [
+      { wch: 5 }, // ID
+      { wch: 20 }, // Nama
+      { wch: 15 }, // WhatsApp
+      { wch: 15 }, // Instagram
+      { wch: 15 }, // Tanggal Booking
+      { wch: 12 }, // Jumlah Orang
+      { wch: 12 }, // Spot
+      { wch: 15 }, // Total
+      { wch: 12 }, // DP
+      { wch: 12 }, // Sisa
+      { wch: 12 }, // Status
+      { wch: 15 }, // Tanggal Dibuat
+      { wch: 60 }, // Pesanan (Detail) - wide column for order details
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bookings");
 
@@ -329,23 +404,53 @@ export default function BookingsPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-700/50">
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Pelanggan
+                <th
+                  className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-teal-600 group"
+                  onClick={() => handleSort("customerName")}
+                >
+                  <div className="flex items-center">
+                    Pelanggan
+                    <SortIcon field="customerName" />
+                  </div>
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Tanggal
+                <th
+                  className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-teal-600"
+                  onClick={() => handleSort("bookingDate")}
+                >
+                  <div className="flex items-center">
+                    Tanggal
+                    <SortIcon field="bookingDate" />
+                  </div>
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Pax
+                <th
+                  className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-teal-600"
+                  onClick={() => handleSort("pax")}
+                >
+                  <div className="flex items-center">
+                    Pax
+                    <SortIcon field="pax" />
+                  </div>
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Spot
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Total
+                <th
+                  className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-teal-600"
+                  onClick={() => handleSort("totalAmount")}
+                >
+                  <div className="flex items-center">
+                    Total
+                    <SortIcon field="totalAmount" />
+                  </div>
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Status
+                <th
+                  className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-teal-600"
+                  onClick={() => handleSort("status")}
+                >
+                  <div className="flex items-center">
+                    Status
+                    <SortIcon field="status" />
+                  </div>
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Aksi
@@ -353,7 +458,7 @@ export default function BookingsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {filteredBookings.length === 0 ? (
+              {sortedBookings.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-8 text-slate-500">
                     {bookings.length === 0
@@ -362,7 +467,7 @@ export default function BookingsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredBookings.map((booking) => (
+                sortedBookings.map((booking) => (
                   <tr
                     key={booking.id}
                     className="hover:bg-slate-50 dark:hover:bg-slate-700/30"
@@ -406,12 +511,40 @@ export default function BookingsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        className="text-teal-500 hover:text-teal-600 font-medium text-sm"
-                        onClick={() => setSelectedBooking(booking)}
-                      >
-                        Detail
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {/* Confirm Button */}
+                        {booking.status === "pending" && (
+                          <button
+                            className="p-2 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-all"
+                            onClick={() =>
+                              updateStatus(booking.id, "confirmed")
+                            }
+                            title="Konfirmasi"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* Cancel Button */}
+                        {booking.status !== "cancelled" && (
+                          <button
+                            className="p-2 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-all"
+                            onClick={() =>
+                              updateStatus(booking.id, "cancelled")
+                            }
+                            title="Batalkan"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* Detail Button */}
+                        <button
+                          className="p-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-all"
+                          onClick={() => setSelectedBooking(booking)}
+                          title="Lihat Detail"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
