@@ -3,6 +3,20 @@
 import { useEffect, useState } from "react";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import * as XLSX from "xlsx";
+import {
+  CalendarDays,
+  Users,
+  Wallet,
+  Download,
+  Search,
+  Filter,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Trash2,
+  X,
+} from "lucide-react";
 
 interface OrderItem {
   id: number;
@@ -107,6 +121,15 @@ export default function BookingsPage() {
     return true;
   });
 
+  // Calculate stats from filtered data
+  const filteredStats = {
+    total: filteredBookings.length,
+    totalPax: filteredBookings.reduce((sum, b) => sum + b.pax, 0),
+    totalRevenue: filteredBookings.reduce((sum, b) => sum + b.totalAmount, 0),
+    pending: filteredBookings.filter((b) => b.status === "pending").length,
+    confirmed: filteredBookings.filter((b) => b.status === "confirmed").length,
+  };
+
   // Export to Excel
   const exportToExcel = () => {
     const exportData = filteredBookings.map((b) => ({
@@ -160,15 +183,66 @@ export default function BookingsPage() {
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
-          📅 Daftar Booking
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+          <CalendarDays className="w-7 h-7" />
+          Daftar Booking
         </h1>
         <button
           className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-xl shadow-lg transition-all flex items-center gap-2"
           onClick={exportToExcel}
         >
-          📥 Export Excel
+          <Download className="w-5 h-5" />
+          Export Excel
         </button>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-3 md:p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 mb-1">
+            <CalendarDays className="w-4 h-4" />
+            <span className="text-xs font-semibold">Booking</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
+            {filteredStats.total}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-3 md:p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+            <Users className="w-4 h-4" />
+            <span className="text-xs font-semibold">Total Pax</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
+            {filteredStats.totalPax}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-3 md:p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mb-1">
+            <Clock className="w-4 h-4" />
+            <span className="text-xs font-semibold">Pending</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
+            {filteredStats.pending}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-3 md:p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1">
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-xs font-semibold">Confirmed</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
+            {filteredStats.confirmed}
+          </div>
+        </div>
+        <div className="col-span-2 md:col-span-1 bg-white dark:bg-slate-800 rounded-xl p-3 md:p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
+            <Wallet className="w-4 h-4" />
+            <span className="text-xs font-semibold">Revenue</span>
+          </div>
+          <div className="text-lg md:text-xl font-bold text-slate-800 dark:text-white">
+            {formatCurrency(filteredStats.totalRevenue)}
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
