@@ -2,6 +2,15 @@
 
 import { useEffect, useState, useRef } from "react";
 import { formatCurrency } from "@/lib/utils";
+import {
+  UtensilsCrossed,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Upload,
+  Image,
+} from "lucide-react";
 
 interface Category {
   id: number;
@@ -285,15 +294,17 @@ export default function MenuPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
-          🍽️ Kelola Menu
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+          <UtensilsCrossed className="w-6 h-6" />
+          Kelola Menu
         </h1>
         <button
-          className="px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg transition-all"
+          className="px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg transition-all flex items-center gap-2"
           onClick={openAddModal}
         >
-          + Tambah Menu
+          <Plus className="w-5 h-5" />
+          Tambah Menu
         </button>
       </div>
 
@@ -325,7 +336,7 @@ export default function MenuPage() {
       </div>
 
       {/* Menu Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {filteredMenus.length === 0 ? (
           <div className="col-span-full text-center py-12 text-slate-500">
             Tidak ada menu. Klik &quot;Tambah Menu&quot; untuk menambahkan.

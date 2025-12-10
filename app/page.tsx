@@ -69,6 +69,11 @@ export default function HomePage() {
   const restaurantName =
     process.env.NEXT_PUBLIC_RESTAURANT_NAME || "Teras Rumah Nenek";
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [allMenus, setAllMenus] = useState<Menu[]>([]);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>(
+    []
+  );
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [seatingSpots, setSeatingSpots] = useState<SeatingSpot[]>([]);
 
   useEffect(() => {
@@ -80,6 +85,9 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/menu");
       const data = await res.json();
+      setAllMenus(data.menus || []);
+      setCategories(data.categories || []);
+      // Show first 6 menus by default
       setMenus((data.menus || []).slice(0, 6));
     } catch (error) {
       console.error("Error fetching menus:", error);
@@ -95,6 +103,20 @@ export default function HomePage() {
       console.error("Error fetching seating:", error);
     }
   };
+
+  // Filter menus by selected category
+  useEffect(() => {
+    if (selectedCategory === null) {
+      setMenus(allMenus.slice(0, 6));
+    } else {
+      const filtered = allMenus.filter(
+        (m) =>
+          m.category?.name ===
+          categories.find((c) => c.id === selectedCategory)?.name
+      );
+      setMenus(filtered.slice(0, 6));
+    }
+  }, [selectedCategory, allMenus, categories]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -244,9 +266,38 @@ export default function HomePage() {
               <UtensilsCrossed className="w-8 h-8 text-teal-600" />
               Menu Spesial Kami
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
+            <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto mb-6">
               Berbagai pilihan menu lezat untuk berbuka puasa
             </p>
+
+            {/* Category Tabs */}
+            {categories.length > 0 && (
+              <div className="flex justify-center gap-2 flex-wrap">
+                <button
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedCategory === null
+                      ? "bg-teal-500 text-white shadow-md"
+                      : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  }`}
+                  onClick={() => setSelectedCategory(null)}
+                >
+                  Semua
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === cat.id
+                        ? "bg-teal-500 text-white shadow-md"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    }`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {menus.length > 0 ? (
@@ -504,7 +555,8 @@ export default function HomePage() {
               <h4 className="font-semibold text-base mb-3">Kontak</h4>
               <div className="space-y-2 text-sm">
                 <p className="text-slate-400">
-                  <span className="text-slate-500">WhatsApp:</span> 6281804040684
+                  <span className="text-slate-500">WhatsApp:</span>{" "}
+                  6281804040684
                 </p>
                 <p className="text-slate-400">
                   <span className="text-slate-500">Jam Buka:</span> 16:00 -

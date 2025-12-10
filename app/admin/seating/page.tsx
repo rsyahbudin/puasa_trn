@@ -187,9 +187,9 @@ export default function SeatingPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-          <Armchair className="w-7 h-7" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+          <Armchair className="w-6 h-6" />
           Kelola Tempat Duduk
         </h1>
         <button
@@ -202,7 +202,7 @@ export default function SeatingPage() {
       </div>
 
       {/* Seating Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {seats.length === 0 ? (
           <div className="col-span-full text-center py-12 text-slate-500">
             Tidak ada spot tempat duduk. Klik &quot;Tambah Spot&quot; untuk
