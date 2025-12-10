@@ -27,21 +27,18 @@ export default function AdminLayout({
     router.push("/admin/login");
   };
 
-  // Show login page without sidebar
   if (pathname === "/admin/login") {
     return <>{children}</>;
   }
 
-  // Loading state
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <div className="text-slate-500">Loading...</div>
       </div>
     );
   }
 
-  // Not authenticated
   if (!isAuthenticated) {
     return null;
   }
@@ -53,12 +50,16 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-slate-100 dark:bg-slate-900">
       {/* Sidebar */}
-      <aside className="admin-sidebar">
+      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-6 fixed h-full hidden md:block">
         <div className="mb-8">
-          <h1 className="text-xl font-bold text-primary">🌙 Admin Panel</h1>
-          <p className="text-sm text-muted">Restoran Buka Puasa</p>
+          <h1 className="text-xl font-bold text-teal-600 dark:text-teal-400">
+            🌙 Admin Panel
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Restoran Buka Puasa
+          </p>
         </div>
 
         <nav className="space-y-1">
@@ -66,8 +67,10 @@ export default function AdminLayout({
             <Link
               key={link.href}
               href={link.href}
-              className={`sidebar-link ${
-                pathname === link.href ? "active" : ""
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                pathname === link.href
+                  ? "bg-teal-500 text-white shadow-lg shadow-teal-500/30"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
               }`}
             >
               <span>{link.icon}</span>
@@ -77,14 +80,47 @@ export default function AdminLayout({
         </nav>
 
         <div className="absolute bottom-6 left-6 right-6">
-          <button onClick={handleLogout} className="btn btn-outline w-full">
+          <button
+            onClick={handleLogout}
+            className="w-full py-3 border-2 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-medium rounded-xl hover:border-red-500 hover:text-red-500 transition-all"
+          >
             🚪 Logout
           </button>
         </div>
       </aside>
 
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 z-50">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-teal-600 dark:text-teal-400">
+            🌙 Admin
+          </h1>
+          <div className="flex gap-2">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`px-3 py-2 rounded-lg text-sm ${
+                  pathname === link.href
+                    ? "bg-teal-500 text-white"
+                    : "text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                {link.icon}
+              </Link>
+            ))}
+            <button
+              onClick={handleLogout}
+              className="px-3 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400"
+            >
+              🚪
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
-      <main className="admin-content flex-1">{children}</main>
+      <main className="flex-1 md:ml-64 p-6 mt-16 md:mt-0">{children}</main>
     </div>
   );
 }

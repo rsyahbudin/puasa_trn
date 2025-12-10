@@ -34,18 +34,20 @@ export async function GET(
   }
 }
 
-// PUT - Update menu
+// PUT - Update menu with variants
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const menuId = parseInt(id);
     const body = await request.json();
-    const { name, price, description, image, categoryId } = body;
+    const { name, price, description, image, categoryId, variants } = body;
 
-    const menu = await prisma.menu.update({
-      where: { id: parseInt(id) },
+    // Update basic menu info
+    await prisma.menu.update({
+      where: { id: menuId },
       data: {
         name,
         price: parseInt(price),
@@ -53,6 +55,44 @@ export async function PUT(
         image,
         categoryId: parseInt(categoryId),
       },
+    });
+
+    // If variants are provided, update them
+    if (variants !== undefined) {
+      // Delete existing variants and options
+      await prisma.variantOption.deleteMany({
+        where: {
+          variant: {
+            menuId: menuId,
+          },
+        },
+      });
+      await prisma.menuVariant.deleteMany({
+        where: { menuId: menuId },
+      });
+
+      // Create new variants and options
+      for (const variant of variants) {
+        await prisma.menuVariant.create({
+          data: {
+            name: variant.name,
+            menuId: menuId,
+            options: {
+              create: variant.options.map(
+                (opt: { name: string; price: number }) => ({
+                  name: opt.name,
+                  price: opt.price || 0,
+                })
+              ),
+            },
+          },
+        });
+      }
+    }
+
+    // Fetch updated menu with all relations
+    const updatedMenu = await prisma.menu.findUnique({
+      where: { id: menuId },
       include: {
         category: true,
         variants: {
@@ -63,7 +103,7 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(menu);
+    return NextResponse.json(updatedMenu);
   } catch (error) {
     console.error("Error updating menu:", error);
     return NextResponse.json(

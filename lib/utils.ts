@@ -11,6 +11,16 @@ export function calculateDP(total: number): number {
   return Math.ceil(total * 0.5);
 }
 
+export const TAX_RATE = 0.1; // 10%
+
+export function calculateTax(subtotal: number): number {
+  return Math.ceil(subtotal * TAX_RATE);
+}
+
+export function calculateTotalWithTax(subtotal: number): number {
+  return subtotal + calculateTax(subtotal);
+}
+
 export interface OrderItemForMessage {
   menuName: string;
   quantity: number;

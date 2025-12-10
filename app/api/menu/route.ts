@@ -32,32 +32,51 @@ export async function GET() {
   }
 }
 
-// POST - Create new menu (admin only)
+// POST - Create new menu with variants (admin only)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { name, price, description, image, categoryId, variants } = body;
 
+    // First create the menu without variants
     const menu = await prisma.menu.create({
       data: {
         name,
         price: parseInt(price),
-        description,
-        image,
+        description: description || null,
+        image: image || null,
         categoryId: parseInt(categoryId),
-        variants: variants
-          ? {
-              create: variants.map(
-                (v: { name: string; options: string[] }) => ({
-                  name: v.name,
-                  options: {
-                    create: v.options.map((opt: string) => ({ name: opt })),
-                  },
-                })
-              ),
-            }
-          : undefined,
       },
+      include: {
+        category: true,
+      },
+    });
+
+    // Then create variants if provided
+    if (variants && variants.length > 0) {
+      for (const variant of variants) {
+        if (variant.name && variant.options && variant.options.length > 0) {
+          await prisma.menuVariant.create({
+            data: {
+              name: variant.name,
+              menuId: menu.id,
+              options: {
+                create: variant.options.map(
+                  (opt: { name: string; price: number }) => ({
+                    name: opt.name,
+                    price: opt.price || 0,
+                  })
+                ),
+              },
+            },
+          });
+        }
+      }
+    }
+
+    // Fetch the complete menu with variants
+    const completeMenu = await prisma.menu.findUnique({
+      where: { id: menu.id },
       include: {
         category: true,
         variants: {
@@ -68,11 +87,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(menu, { status: 201 });
+    return NextResponse.json(completeMenu, { status: 201 });
   } catch (error) {
     console.error("Error creating menu:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to create menu" },
+      { error: "Failed to create menu", details: message },
       { status: 500 }
     );
   }
