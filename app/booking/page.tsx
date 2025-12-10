@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   formatCurrency,
   calculateDP,
@@ -84,6 +85,15 @@ export default function BookingPage() {
   const [variantSelections, setVariantSelections] = useState<{
     [key: string]: { name: string; price: number };
   }>({});
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({
+    message: "",
+    visible: false,
+  });
+
+  const showToast = (message: string) => {
+    setToast({ message, visible: true });
+    setTimeout(() => setToast({ message: "", visible: false }), 2500);
+  };
 
   const restaurantPhone =
     process.env.NEXT_PUBLIC_RESTAURANT_PHONE || "6281234567890";
@@ -157,6 +167,7 @@ export default function BookingPage() {
     }
     setShowVariantModal(false);
     setSelectedMenu(null);
+    showToast(`✅ ${menu.name} ditambahkan ke keranjang!`);
   };
 
   const handleVariantConfirm = () => {
@@ -337,14 +348,29 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-amber-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-amber-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 py-4 md:py-8 px-3 md:px-4 pb-20 md:pb-8">
+      {/* Toast Notification */}
+      {toast.visible && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-green-500 text-white px-4 py-2 rounded-full shadow-lg font-medium text-sm">
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">
-            Booking Buka Puasa di Teras Rumah Nenek
+        <div className="text-center mb-6 md:mb-8">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm font-medium mb-3 hover:underline"
+          >
+            ← Kembali ke Home
+          </Link>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white mb-2">
+            Booking Buka Puasa
           </h1>
-          <p className="text-slate-500">
+          <p className="text-sm md:text-base text-slate-500">
             Isi data dan pilih menu untuk reservasi
           </p>
         </div>
@@ -544,14 +570,14 @@ export default function BookingPage() {
             </div>
 
             {/* Menu Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-6">
               {filteredMenus.map((menu) => (
                 <div
                   key={menu.id}
-                  className="bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden hover:border-teal-500 hover:shadow-xl transition-all cursor-pointer group"
+                  className="bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden hover:border-teal-500 hover:shadow-xl transition-all cursor-pointer group active:scale-95"
                   onClick={() => handleAddToOrder(menu)}
                 >
-                  <div className="h-40 bg-gradient-to-br from-teal-100 to-amber-100 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center">
+                  <div className="h-24 md:h-40 bg-gradient-to-br from-teal-100 to-amber-100 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center">
                     {menu.image ? (
                       <img
                         src={menu.image}
@@ -559,28 +585,28 @@ export default function BookingPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-5xl">🍽️</span>
+                      <span className="text-3xl md:text-5xl">🍽️</span>
                     )}
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-slate-800 dark:text-white mb-1">
+                  <div className="p-2 md:p-4">
+                    <h3 className="font-semibold text-xs md:text-base text-slate-800 dark:text-white mb-1 line-clamp-1">
                       {menu.name}
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-2 line-clamp-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 line-clamp-1 md:line-clamp-2 hidden md:block">
                       {menu.description}
                     </p>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-1">
                       <div>
-                        <span className="text-teal-600 dark:text-teal-400 font-bold">
+                        <span className="text-teal-600 dark:text-teal-400 font-bold text-xs md:text-base">
                           {formatCurrency(menu.price)}
                         </span>
                         {menu.variants?.length > 0 && (
-                          <span className="text-xs text-slate-400 ml-1">
+                          <span className="text-xs text-slate-400 ml-1 hidden md:inline">
                             +varian
                           </span>
                         )}
                       </div>
-                      <span className="px-3 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-xs font-semibold rounded-full group-hover:bg-teal-500 group-hover:text-white transition-all">
+                      <span className="px-2 md:px-3 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-xs font-semibold rounded-full group-hover:bg-teal-500 group-hover:text-white transition-all">
                         + Tambah
                       </span>
                     </div>
@@ -674,8 +700,8 @@ export default function BookingPage() {
               </div>
             )}
 
-            {/* Navigation */}
-            <div className="flex justify-between">
+            {/* Navigation - Desktop */}
+            <div className="hidden md:flex justify-between">
               <button
                 className="px-6 py-3 border-2 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-semibold rounded-xl hover:border-teal-500 hover:text-teal-500 transition-all"
                 onClick={() => setStep(1)}
@@ -689,6 +715,40 @@ export default function BookingPage() {
               >
                 Lanjut ke Pembayaran →
               </button>
+            </div>
+
+            {/* Mobile Floating Cart Bar */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-3 z-40">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  className="px-3 py-2 border-2 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-medium rounded-lg text-sm"
+                  onClick={() => setStep(1)}
+                >
+                  ←
+                </button>
+                <div className="flex-1 text-center">
+                  {orderItems.length > 0 ? (
+                    <div>
+                      <span className="text-xs text-slate-500">
+                        {orderItems.reduce((sum, i) => sum + i.quantity, 0)}{" "}
+                        item
+                      </span>
+                      <span className="font-bold text-teal-600 ml-2">
+                        {formatCurrency(subtotalAmount)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-slate-400">Pilih menu</span>
+                  )}
+                </div>
+                <button
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-lg text-sm disabled:opacity-50"
+                  disabled={!canProceedStep2}
+                  onClick={() => setStep(3)}
+                >
+                  Lanjut →
+                </button>
+              </div>
             </div>
           </div>
         )}
