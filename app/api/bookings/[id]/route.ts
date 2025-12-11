@@ -29,7 +29,7 @@ export async function GET(
   }
 }
 
-// PUT - Update booking status
+// PUT - Update booking (status, customer data, or order items)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,11 +37,66 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status } = body;
+    const {
+      status,
+      customerName,
+      phone,
+      instagram,
+      bookingDate,
+      pax,
+      seating,
+      orderItems, // array of { menuName, quantity, selectedOptions, subtotal }
+    } = body;
+
+    // Build update data object with only provided fields
+    const updateData: Record<string, unknown> = {};
+
+    if (status !== undefined) updateData.status = status;
+    if (customerName !== undefined) updateData.customerName = customerName;
+    if (phone !== undefined) updateData.phone = phone;
+    if (instagram !== undefined) updateData.instagram = instagram || null;
+    if (bookingDate !== undefined)
+      updateData.bookingDate = new Date(bookingDate);
+    if (pax !== undefined) updateData.pax = pax;
+    if (seating !== undefined) updateData.seating = seating;
+
+    // If orderItems provided, calculate new total and update items
+    if (orderItems && Array.isArray(orderItems)) {
+      const newTotal = orderItems.reduce(
+        (sum: number, item: { subtotal: number }) => sum + item.subtotal,
+        0
+      );
+      updateData.totalAmount = newTotal;
+
+      // Delete existing order items
+      await prisma.orderItem.deleteMany({
+        where: { bookingId: parseInt(id) },
+      });
+
+      // Create new order items
+      await prisma.orderItem.createMany({
+        data: orderItems.map(
+          (item: {
+            menuId: number;
+            menuName: string;
+            quantity: number;
+            selectedOptions?: string;
+            subtotal: number;
+          }) => ({
+            bookingId: parseInt(id),
+            menuId: item.menuId,
+            menuName: item.menuName,
+            quantity: item.quantity,
+            selectedOptions: item.selectedOptions || null,
+            subtotal: item.subtotal,
+          })
+        ),
+      });
+    }
 
     const booking = await prisma.booking.update({
       where: { id: parseInt(id) },
-      data: { status },
+      data: updateData,
       include: {
         orderItems: true,
       },

@@ -21,14 +21,23 @@ import {
   ArrowDown,
   Pencil,
   Save,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 interface OrderItem {
   id: number;
+  menuId: number;
   menuName: string;
   quantity: number;
   selectedOptions: string | null;
   subtotal: number;
+}
+
+interface MenuOption {
+  id: number;
+  name: string;
+  price: number;
 }
 
 interface Booking {
@@ -66,6 +75,16 @@ export default function BookingsPage() {
     pax: 0,
     seating: "",
   });
+  const [editOrderItems, setEditOrderItems] = useState<
+    Array<{
+      menuId: number;
+      menuName: string;
+      quantity: number;
+      selectedOptions: string;
+      subtotal: number;
+    }>
+  >([]);
+  const [menus, setMenus] = useState<MenuOption[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -118,31 +137,114 @@ export default function BookingsPage() {
       pax: booking.pax,
       seating: booking.seating,
     });
+    // Copy order items to edit state
+    setEditOrderItems(
+      booking.orderItems?.map((item) => ({
+        menuId: item.menuId || 0,
+        menuName: item.menuName,
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions || "",
+        subtotal: item.subtotal,
+      })) || []
+    );
+    // Fetch menus for dropdown
+    fetchMenus();
     setIsEditing(true);
+  };
+
+  const fetchMenus = async () => {
+    try {
+      const res = await fetch("/api/menu");
+      const data = await res.json();
+      setMenus(
+        (data.menus || []).map(
+          (m: { id: number; name: string; price: number }) => ({
+            id: m.id,
+            name: m.name,
+            price: m.price,
+          })
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching menus:", error);
+    }
   };
 
   const cancelEdit = () => {
     setIsEditing(false);
+    setEditOrderItems([]);
+  };
+
+  const addOrderItem = () => {
+    if (menus.length === 0) return;
+    const firstMenu = menus[0];
+    setEditOrderItems([
+      ...editOrderItems,
+      {
+        menuId: firstMenu.id,
+        menuName: firstMenu.name,
+        quantity: 1,
+        selectedOptions: "",
+        subtotal: firstMenu.price,
+      },
+    ]);
+  };
+
+  const removeOrderItem = (index: number) => {
+    const updated = [...editOrderItems];
+    updated.splice(index, 1);
+    setEditOrderItems(updated);
+  };
+
+  const updateOrderItem = (
+    index: number,
+    field: string,
+    value: string | number
+  ) => {
+    const updated = [...editOrderItems];
+    if (field === "menuId") {
+      const menu = menus.find((m) => m.id === Number(value));
+      if (menu) {
+        updated[index] = {
+          ...updated[index],
+          menuId: menu.id,
+          menuName: menu.name,
+          subtotal: menu.price * updated[index].quantity,
+        };
+      }
+    } else if (field === "quantity") {
+      const qty = Math.max(1, Number(value));
+      const menu = menus.find((m) => m.id === updated[index].menuId);
+      updated[index] = {
+        ...updated[index],
+        quantity: qty,
+        subtotal: (menu?.price || 0) * qty,
+      };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setEditOrderItems(updated);
   };
 
   const saveEdit = async () => {
     if (!selectedBooking) return;
     setSaving(true);
     try {
+      const payload = {
+        ...editForm,
+        orderItems: editOrderItems,
+      };
       const res = await fetch(`/api/bookings/${selectedBooking.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
+        const updatedBooking = await res.json();
         fetchBookings();
         setIsEditing(false);
-        // Update selectedBooking with new data
-        setSelectedBooking({
-          ...selectedBooking,
-          ...editForm,
-          instagram: editForm.instagram || null,
-        });
+        setEditOrderItems([]);
+        setSelectedBooking(updatedBooking);
       } else {
         alert("Gagal menyimpan perubahan");
       }
@@ -784,26 +886,137 @@ export default function BookingsPage() {
               )}
 
               <div className="mb-6">
-                <h4 className="font-semibold text-slate-800 dark:text-white mb-2">
-                  Pesanan:
-                </h4>
-                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 space-y-2">
-                  {selectedBooking.orderItems?.map((item) => (
-                    <div key={item.id} className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">
-                        {item.menuName} x{item.quantity}
-                        {item.selectedOptions && (
-                          <span className="text-slate-400">
-                            {" "}
-                            ({item.selectedOptions})
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-semibold text-slate-800 dark:text-white">
+                    Pesanan:
+                  </h4>
+                  {isEditing && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700"
+                      onClick={addOrderItem}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Tambah Menu
+                    </button>
+                  )}
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 space-y-3">
+                  {isEditing ? (
+                    // Edit Mode - Order Items
+                    editOrderItems.length === 0 ? (
+                      <p className="text-sm text-slate-500 text-center py-2">
+                        Belum ada pesanan. Klik &quot;Tambah Menu&quot; untuk
+                        menambahkan.
+                      </p>
+                    ) : (
+                      editOrderItems.map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 p-2 bg-white dark:bg-slate-600 rounded-lg"
+                        >
+                          <select
+                            className="flex-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-500 bg-white dark:bg-slate-700 text-sm"
+                            value={item.menuId}
+                            onChange={(e) =>
+                              updateOrderItem(index, "menuId", e.target.value)
+                            }
+                          >
+                            {menus.map((menu) => (
+                              <option key={menu.id} value={menu.id}>
+                                {menu.name} - {formatCurrency(menu.price)}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="p-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                              onClick={() =>
+                                updateOrderItem(
+                                  index,
+                                  "quantity",
+                                  item.quantity - 1
+                                )
+                              }
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <input
+                              type="number"
+                              className="w-12 text-center px-1 py-1 rounded border border-slate-200 dark:border-slate-500 bg-white dark:bg-slate-700 text-sm"
+                              value={item.quantity}
+                              min={1}
+                              onChange={(e) =>
+                                updateOrderItem(
+                                  index,
+                                  "quantity",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            <button
+                              type="button"
+                              className="p-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                              onClick={() =>
+                                updateOrderItem(
+                                  index,
+                                  "quantity",
+                                  item.quantity + 1
+                                )
+                              }
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <span className="text-sm font-medium text-teal-600 w-24 text-right">
+                            {formatCurrency(item.subtotal)}
                           </span>
+                          <button
+                            type="button"
+                            className="p-1 rounded bg-red-50 dark:bg-red-900/30 text-red-500 hover:bg-red-100"
+                            onClick={() => removeOrderItem(index)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    )
+                  ) : (
+                    // View Mode - Order Items
+                    selectedBooking.orderItems?.map((item) => (
+                      <div key={item.id} className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          {item.menuName} x{item.quantity}
+                          {item.selectedOptions && (
+                            <span className="text-slate-400">
+                              {" "}
+                              ({item.selectedOptions})
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-medium text-slate-800 dark:text-white">
+                          {formatCurrency(item.subtotal)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                  {/* Total in edit mode */}
+                  {isEditing && editOrderItems.length > 0 && (
+                    <div className="border-t border-slate-200 dark:border-slate-600 pt-2 mt-2 flex justify-between font-semibold">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        Total Baru:
+                      </span>
+                      <span className="text-teal-600">
+                        {formatCurrency(
+                          editOrderItems.reduce(
+                            (sum, item) => sum + item.subtotal,
+                            0
+                          )
                         )}
                       </span>
-                      <span className="font-medium text-slate-800 dark:text-white">
-                        {formatCurrency(item.subtotal)}
-                      </span>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
