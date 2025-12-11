@@ -19,6 +19,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Pencil,
+  Save,
 } from "lucide-react";
 
 interface OrderItem {
@@ -55,6 +57,16 @@ export default function BookingsPage() {
   const [endDate, setEndDate] = useState("");
   const [sortField, setSortField] = useState<string>("bookingDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    customerName: "",
+    phone: "",
+    instagram: "",
+    bookingDate: "",
+    pax: 0,
+    seating: "",
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -80,6 +92,7 @@ export default function BookingsPage() {
       });
       fetchBookings();
       setSelectedBooking(null);
+      setIsEditing(false);
     } catch (error) {
       console.error("Error updating status:", error);
     }
@@ -94,6 +107,50 @@ export default function BookingsPage() {
     } catch (error) {
       console.error("Error deleting booking:", error);
     }
+  };
+
+  const startEdit = (booking: Booking) => {
+    setEditForm({
+      customerName: booking.customerName,
+      phone: booking.phone,
+      instagram: booking.instagram || "",
+      bookingDate: booking.bookingDate.split("T")[0],
+      pax: booking.pax,
+      seating: booking.seating,
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const saveEdit = async () => {
+    if (!selectedBooking) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/bookings/${selectedBooking.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      if (res.ok) {
+        fetchBookings();
+        setIsEditing(false);
+        // Update selectedBooking with new data
+        setSelectedBooking({
+          ...selectedBooking,
+          ...editForm,
+          instagram: editForm.instagram || null,
+        });
+      } else {
+        alert("Gagal menyimpan perubahan");
+      }
+    } catch (error) {
+      console.error("Error saving edit:", error);
+      alert("Gagal menyimpan perubahan");
+    }
+    setSaving(false);
   };
 
   // Filter bookings based on search, status, and date
@@ -566,54 +623,165 @@ export default function BookingsPage() {
           >
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
               <h3 className="font-semibold text-lg text-slate-800 dark:text-white">
-                Detail Booking #{selectedBooking.id}
+                {isEditing ? "Edit Booking" : "Detail Booking"} #
+                {selectedBooking.id}
               </h3>
-              <button
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
-                onClick={() => setSelectedBooking(null)}
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {!isEditing && (
+                  <button
+                    className="p-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 hover:bg-teal-100 transition-all"
+                    onClick={() => startEdit(selectedBooking)}
+                    title="Edit"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 flex items-center justify-center"
+                  onClick={() => {
+                    setSelectedBooking(null);
+                    setIsEditing(false);
+                  }}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <span className="text-sm text-slate-500">Nama:</span>
-                  <p className="font-medium text-slate-800 dark:text-white">
-                    {selectedBooking.customerName}
-                  </p>
+              {isEditing ? (
+                // Edit Form
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm text-slate-500 mb-1">
+                      Nama:
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-teal-500 outline-none"
+                      value={editForm.customerName}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          customerName: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-500 mb-1">
+                      WhatsApp:
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-teal-500 outline-none"
+                      value={editForm.phone}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, phone: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-500 mb-1">
+                      Instagram:
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-teal-500 outline-none"
+                      value={editForm.instagram}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, instagram: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-500 mb-1">
+                      Tanggal:
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-teal-500 outline-none"
+                      value={editForm.bookingDate}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          bookingDate: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-500 mb-1">
+                      Jumlah Orang:
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-teal-500 outline-none"
+                      value={editForm.pax}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          pax: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-500 mb-1">
+                      Spot:
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-teal-500 outline-none"
+                      value={editForm.seating}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, seating: e.target.value })
+                      }
+                    />
+                  </div>
                 </div>
-                <div>
-                  <span className="text-sm text-slate-500">WhatsApp:</span>
-                  <p className="font-medium text-slate-800 dark:text-white">
-                    {selectedBooking.phone}
-                  </p>
+              ) : (
+                // View Mode
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <span className="text-sm text-slate-500">Nama:</span>
+                    <p className="font-medium text-slate-800 dark:text-white">
+                      {selectedBooking.customerName}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-slate-500">WhatsApp:</span>
+                    <p className="font-medium text-slate-800 dark:text-white">
+                      {selectedBooking.phone}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-slate-500">Instagram:</span>
+                    <p className="font-medium text-slate-800 dark:text-white">
+                      {selectedBooking.instagram || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-slate-500">Tanggal:</span>
+                    <p className="font-medium text-slate-800 dark:text-white">
+                      {formatDateShort(selectedBooking.bookingDate)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-slate-500">
+                      Jumlah Orang:
+                    </span>
+                    <p className="font-medium text-slate-800 dark:text-white">
+                      {selectedBooking.pax} pax
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-slate-500">Spot:</span>
+                    <p className="font-medium text-slate-800 dark:text-white">
+                      {selectedBooking.seating}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-sm text-slate-500">Instagram:</span>
-                  <p className="font-medium text-slate-800 dark:text-white">
-                    {selectedBooking.instagram || "-"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm text-slate-500">Tanggal:</span>
-                  <p className="font-medium text-slate-800 dark:text-white">
-                    {formatDateShort(selectedBooking.bookingDate)}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm text-slate-500">Jumlah Orang:</span>
-                  <p className="font-medium text-slate-800 dark:text-white">
-                    {selectedBooking.pax} pax
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm text-slate-500">Spot:</span>
-                  <p className="font-medium text-slate-800 dark:text-white">
-                    {selectedBooking.seating}
-                  </p>
-                </div>
-              </div>
+              )}
 
               <div className="mb-6">
                 <h4 className="font-semibold text-slate-800 dark:text-white mb-2">
@@ -675,32 +843,56 @@ export default function BookingsPage() {
               )}
 
               <div className="flex gap-2 flex-wrap">
-                {selectedBooking.status === "pending" && (
-                  <button
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-all"
-                    onClick={() =>
-                      updateStatus(selectedBooking.id, "confirmed")
-                    }
-                  >
-                    ✓ Konfirmasi
-                  </button>
+                {isEditing ? (
+                  <>
+                    <button
+                      className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                      onClick={saveEdit}
+                      disabled={saving}
+                    >
+                      <Save className="w-4 h-4" />
+                      {saving ? "Menyimpan..." : "Simpan"}
+                    </button>
+                    <button
+                      className="px-4 py-2 border-2 border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold rounded-xl transition-all"
+                      onClick={cancelEdit}
+                    >
+                      Batal
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {selectedBooking.status === "pending" && (
+                      <button
+                        className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-all flex items-center gap-2"
+                        onClick={() =>
+                          updateStatus(selectedBooking.id, "confirmed")
+                        }
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Konfirmasi
+                      </button>
+                    )}
+                    {selectedBooking.status !== "cancelled" && (
+                      <button
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all flex items-center gap-2"
+                        onClick={() =>
+                          updateStatus(selectedBooking.id, "cancelled")
+                        }
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Batalkan
+                      </button>
+                    )}
+                    <button
+                      className="px-4 py-2 border-2 border-red-200 text-red-500 hover:bg-red-50 font-semibold rounded-xl transition-all flex items-center gap-2"
+                      onClick={() => deleteBooking(selectedBooking.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Hapus
+                    </button>
+                  </>
                 )}
-                {selectedBooking.status !== "cancelled" && (
-                  <button
-                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all"
-                    onClick={() =>
-                      updateStatus(selectedBooking.id, "cancelled")
-                    }
-                  >
-                    ✕ Batalkan
-                  </button>
-                )}
-                <button
-                  className="px-4 py-2 border-2 border-red-200 text-red-500 hover:bg-red-50 font-semibold rounded-xl transition-all"
-                  onClick={() => deleteBooking(selectedBooking.id)}
-                >
-                  🗑️ Hapus
-                </button>
               </div>
             </div>
           </div>
